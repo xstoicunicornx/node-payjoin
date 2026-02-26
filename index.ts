@@ -1,4 +1,4 @@
-import { payjoin, uniffiInitAsync } from "payjoin";
+import { payjoin, uniffiInitAsync } from "@xstoicunicornx/payjoin_test";
 import { originalPsbt } from "payjoin-test-utils";
 import assert from "assert";
 
