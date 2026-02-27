@@ -61,4 +61,16 @@ export class Sender {
     console.log("sender balance", balance);
     return balance;
   }
+
+  async walletcreatefundedpsbt(address: string, amount: bigint) {
+    const amount_btc = Number(amount) / 100000000;
+    const psbt = await this.walletCommand("walletcreatefundedpsbt", [
+      [], // inputs
+      [{ [address]: amount_btc }], // outputs
+      0, // locktime
+      { fee_rate: 1 }, // options
+    ]);
+    console.log("psbt", psbt);
+    return psbt;
+  }
 }
