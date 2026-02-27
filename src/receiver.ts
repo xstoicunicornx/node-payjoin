@@ -2,6 +2,10 @@ import { payjoin, uniffiInitAsync } from "@xstoicunicornx/payjoin_test";
 import { fetchOhttpKeys } from "./utils.ts";
 import { originalPsbt, TestServices, RpcClient } from "payjoin-test-utils";
 import Client from "bitcoin-core";
+import {
+  ReceiverBuilder,
+  ReceiverBuilderInterface,
+} from "@xstoicunicornx/payjoin_test/dist/generated/payjoin";
 
 const rpcuser = "admin1";
 const rpcpassword = "123";
@@ -77,11 +81,16 @@ export class Receiver {
     );
   }
 
-  async getNewPayjoinReceiver() {
+  async getNewPayjoinReceiver(amount?: bigint, expiration?: bigint) {
     const address = await this.getnewaddress();
     const ohttpKeys = await this.getOhttpKeys();
-    return new payjoin.ReceiverBuilder(address, pjDirectory, ohttpKeys)
-      .build()
-      .saveAsync(this.persister);
+    let payjoinReceiver = new payjoin.ReceiverBuilder(
+      address,
+      pjDirectory,
+      ohttpKeys,
+    ) as ReceiverBuilderInterface;
+    if (amount) payjoinReceiver = payjoinReceiver.withAmount(amount);
+    if (expiration) payjoinReceiver.withExpiration(expiration);
+    return payjoinReceiver.build().saveAsync(this.persister);
   }
 }
