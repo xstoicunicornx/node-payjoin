@@ -8,15 +8,16 @@ async function main() {
 
   const receiver = new Receiver();
   receiver.getbalance();
-  const payjoinReceiver = await receiver.getNewPayjoinReceiver(
-    BigInt(10000),
-    BigInt(1772222563),
-  );
-  const uri = payjoinReceiver.pjUri();
-  console.log(uri.asString());
+  const amount = BigInt(10000);
+  const address = await receiver.getnewaddress();
+  await receiver.initialize(BigInt(10000), BigInt(1772222563));
+  const uri = receiver.getPjUri();
+  console.log("uri", uri.pjEndpoint());
+  receiver.poll();
 
-  const sender = new Sender();
-  sender.getbalance();
+  // const sender = new Sender();
+  // sender.getbalance();
+  // sender.getNewPayjoinSender(uri.asString());
 
   // const senderPersister = new InMemorySenderPersisterAsync(1);
   // const psbt = originalPsbt();

@@ -1,6 +1,6 @@
 import { payjoin } from "@xstoicunicornx/payjoin_test";
 import https from "node:https";
-import { HttpsProxyAgent } from "https-proxy-agent";
+import { HttpsProxyAgent, HttpsProxyAgentOptions } from "https-proxy-agent";
 
 // node function for fetching ohttp keys
 export function fetchOhttpKeys(
@@ -13,15 +13,12 @@ export function fetchOhttpKeys(
     pj_directory,
   );
 
-  // configure headers
-  const options = {
+  // proxy request through relay
+  const agent = new HttpsProxyAgent(relay.href, {
     headers: {
       ACCEPT: "application/ohttp-keys",
     },
-  };
-
-  // proxy request through relay
-  const agent = new HttpsProxyAgent(relay.href, options);
+  });
 
   // return promise that resolves with ohttp keys
   return new Promise((resolve, reject) => {
@@ -57,4 +54,9 @@ export function fetchOhttpKeys(
       reject(`Error while processing GET response for ohttp keys: ${err}`);
     }
   });
+}
+
+export function sleep(seconds: number) {
+  const milliseconds = seconds * 1000;
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }

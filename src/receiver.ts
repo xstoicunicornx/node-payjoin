@@ -1,11 +1,8 @@
-import { payjoin, uniffiInitAsync } from "@xstoicunicornx/payjoin_test";
-import { fetchOhttpKeys } from "./utils.ts";
-import { originalPsbt, TestServices, RpcClient } from "payjoin-test-utils";
+import { payjoin } from "@xstoicunicornx/payjoin_test";
+import { fetchOhttpKeys, sleep } from "./utils.ts";
+// import { originalPsbt, TestServices, RpcClient } from "payjoin-test-utils";
 import Client from "bitcoin-core";
-import {
-  ReceiverBuilder,
-  ReceiverBuilderInterface,
-} from "@xstoicunicornx/payjoin_test/dist/generated/payjoin";
+import { ReceiverBuilderInterface } from "@xstoicunicornx/payjoin_test/dist/generated/payjoin";
 
 const rpcuser = "admin1";
 const rpcpassword = "123";
@@ -44,7 +41,14 @@ class InMemoryReceiverPersisterAsync {
 
 export class Receiver {
   wallet: Client;
-  persister: any;
+  persister: InMemoryReceiverPersisterAsync;
+  session:
+    | payjoin.InitializedInterface
+    | payjoin.UncheckedOriginalPayloadInterface
+    | payjoin.MaybeInputsOwnedInterface
+    | payjoin.ProvisionalProposalInterface
+    | undefined;
+  interrupt: boolean;
 
   constructor() {
     this.wallet = new Client({
@@ -54,6 +58,7 @@ export class Receiver {
       wallet: "receiver",
     });
     this.persister = new InMemoryReceiverPersisterAsync(1);
+    this.interrupt = false;
   }
 
   async walletCommand(method: string, parameters: any[] = []) {
@@ -81,7 +86,7 @@ export class Receiver {
     );
   }
 
-  async getNewPayjoinReceiver(amount?: bigint, expiration?: bigint) {
+  async initialize(amount?: bigint, expiration?: bigint) {
     const address = await this.getnewaddress();
     const ohttpKeys = await this.getOhttpKeys();
     let payjoinReceiver = new payjoin.ReceiverBuilder(
@@ -91,6 +96,20 @@ export class Receiver {
     ) as ReceiverBuilderInterface;
     if (amount) payjoinReceiver = payjoinReceiver.withAmount(amount);
     if (expiration) payjoinReceiver.withExpiration(expiration);
-    return payjoinReceiver.build().saveAsync(this.persister);
+    this.session = await payjoinReceiver.build().saveAsync(this.persister);
+  }
+
+  getPjUri() {
+    if (!(this.session instanceof payjoin.Initialized))
+      throw Error("receiver not in initialized state");
+    return this.session.pjUri();
+  }
+
+  async poll() {
+    if (!this.session) throw Error("receiver has not been initialized");
+    while (!this.interrupt) {
+      console.log("polling...");
+      await sleep(5);
+    }
   }
 }
