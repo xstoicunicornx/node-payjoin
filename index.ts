@@ -14,9 +14,9 @@ async function main() {
   console.log("uri", uri.pjEndpoint());
   receiver.poll();
 
-  // const sender = new Sender();
-  // sender.getbalance();
-  // sender.getNewPayjoinSender(uri.asString());
+  const sender = new Sender();
+  sender.getbalance();
+  sender.getNewPayjoinSender(uri.asString());
 
   // const senderPersister = new InMemorySenderPersisterAsync(1);
   // const psbt = originalPsbt();
