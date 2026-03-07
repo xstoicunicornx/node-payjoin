@@ -1,6 +1,6 @@
 import { payjoin } from "@xstoicunicornx/payjoin_test";
 import https from "node:https";
-import { HttpsProxyAgent, HttpsProxyAgentOptions } from "https-proxy-agent";
+import { HttpsProxyAgent } from "https-proxy-agent";
 
 // node function for fetching ohttp keys
 export function fetchOhttpKeys(
@@ -62,4 +62,12 @@ export function fetchOhttpKeys(
 export function sleep(seconds: number) {
   const milliseconds = seconds * 1000;
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+export function postRequest(request: payjoin.Request) {
+  return fetch(request.url, {
+    method: "POST",
+    headers: { "Content-Type": request.contentType },
+    body: request.body,
+  });
 }

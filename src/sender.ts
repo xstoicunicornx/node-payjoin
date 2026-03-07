@@ -1,4 +1,5 @@
 import { payjoin } from "@xstoicunicornx/payjoin_test";
+import { postRequest } from "./utils";
 import Client from "bitcoin-core";
 
 const rpcuser = "admin1";
@@ -84,14 +85,6 @@ export class Sender {
     return psbt;
   }
 
-  postRequest(request: payjoin.Request) {
-    return fetch(request.url, {
-      method: "POST",
-      headers: { "Content-Type": request.contentType },
-      body: request.body,
-    });
-  }
-
   async getNewPayjoinSender(uri: string) {
     try {
       const pjUri = payjoin.Uri.parse(uri).checkPjSupported();
@@ -109,7 +102,7 @@ export class Sender {
         ohttpRelays[relayIndex],
       );
       // postPjRequest(request);
-      const response = await this.postRequest(request);
+      const response = await postRequest(request);
       console.log("response", response);
 
       const payjoinSender2 = await payjoinSender
@@ -117,13 +110,13 @@ export class Sender {
         .saveAsync(this.persister);
       const { request: getRequest, ohttpCtx: ohttpCtx2 } =
         payjoinSender2.createPollRequest(ohttpRelays[relayIndex]);
-      const response2 = await this.postRequest(getRequest);
+      const response2 = await postRequest(getRequest);
       const result = await payjoinSender2
         .processResponse(await response2.arrayBuffer(), ohttpCtx2)
         .saveAsync(this.persister);
       console.log("result", result);
     } catch (err) {
-      console.log("error", err);
+      console.error("error", err);
     }
   }
 }
