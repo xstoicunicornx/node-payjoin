@@ -64,6 +64,42 @@ class CheckInputsNotSeenCallback implements payjoin.IsOutputKnown {
   }
 }
 
+interface Utxo {
+  txid: string;
+  vout: number;
+  amount: number;
+  scriptPubKey: string;
+}
+
+async function createInputPairs(utxos: Utxo[]): Promise<payjoin.InputPair[]> {
+  const inputs: payjoin.InputPair[] = [];
+  // TODO: remove ts ignores below
+  for (const utxo of utxos) {
+    const txin = payjoin.PlainTxIn.create({
+      previousOutput: payjoin.PlainOutPoint.create({
+        txid: utxo.txid,
+        vout: utxo.vout,
+      }),
+      // @ts-ignore
+      scriptSig: new Uint8Array([]),
+      sequence: 0,
+      witness: [],
+    });
+    const txOut = payjoin.PlainTxOut.create({
+      valueSat: BigInt(Math.round(utxo.amount * 100_000_000)),
+      // @ts-ignore
+      scriptPubkey: Buffer.from(utxo.scriptPubKey, "hex"),
+    });
+    const psbtIn = payjoin.PlainPsbtInput.create({
+      witnessUtxo: txOut,
+      redeemScript: undefined,
+      witnessScript: undefined,
+    });
+    inputs.push(new payjoin.InputPair(txin, psbtIn, undefined));
+  }
+  return inputs;
+}
+
 export class Receiver {
   wallet: Wallet;
   persister: InMemoryReceiverPersisterAsync;
@@ -176,8 +212,11 @@ export class Receiver {
         .commitOutputs()
         .saveAsync(this.persister);
 
-      // TODO: contributeInputs()
+      const utxos: Utxo[] = await this.wallet.listunspent();
+      const inputs = await createInputPairs(utxos);
+      const chosenInput = this.session.tryPreservingPrivacy(inputs);
       this.session = await this.session
+        .contributeInputs([chosenInput])
         .commitInputs()
         .saveAsync(this.persister);
 
@@ -186,7 +225,10 @@ export class Receiver {
         .saveAsync(this.persister);
 
       const unsignedPsbt = this.session.psbtToSign();
-      console.log("checkOriginalPsbt");
+      console.log("unsignedPsbt", unsignedPsbt);
+
+      const { psbt } = await this.wallet.walletprocesspsbt(unsignedPsbt);
+      console.log("psbt", psbt);
     } catch (error) {
       console.error(error);
     }

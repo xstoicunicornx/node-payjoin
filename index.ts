@@ -10,6 +10,7 @@ async function main() {
   const amount = BigInt(10000);
   const expiration = BigInt(Math.floor(Date.now() / 1000) + 60 * 5); // 5 min from now
   await receiver.initialize(amount, expiration);
+  // receiver.getInputs();
   const uri = receiver.getPjUri();
   console.log("uri", uri.pjEndpoint());
   receiver.poll();

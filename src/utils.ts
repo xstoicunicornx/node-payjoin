@@ -90,7 +90,7 @@ export class Wallet {
     });
   }
 
-  async command(method: string, parameters: any[] = []) {
+  private async command(method: string, parameters: any[] = []) {
     const result = await this.client.command([{ method, parameters }]);
     return result[0];
   }
@@ -124,5 +124,9 @@ export class Wallet {
       "ALL",
       false,
     ]);
+  }
+
+  listunspent() {
+    return this.command("listunspent");
   }
 }
