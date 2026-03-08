@@ -6,7 +6,7 @@ async function main() {
   await uniffiInitAsync();
 
   const receiver = new Receiver();
-  receiver.getbalance();
+  receiver.wallet.getbalance();
   const amount = BigInt(10000);
   const expiration = BigInt(Math.floor(Date.now() / 1000) + 60 * 5); // 5 min from now
   await receiver.initialize(amount, expiration);
@@ -15,7 +15,7 @@ async function main() {
   receiver.poll();
 
   const sender = new Sender();
-  sender.getbalance();
+  sender.wallet.getbalance();
   sender.getNewPayjoinSender(uri.asString());
 
   // const senderPersister = new InMemorySenderPersisterAsync(1);

@@ -1,11 +1,6 @@
 import { payjoin } from "@xstoicunicornx/payjoin_test";
-import { fetchOhttpKeys, postRequest, sleep } from "./utils.ts";
-import Client from "bitcoin-core";
+import { fetchOhttpKeys, postRequest, sleep, Wallet } from "./utils.ts";
 import { PlainOutPoint } from "@xstoicunicornx/payjoin_test/dist/generated/payjoin";
-
-const rpcuser = "admin1";
-const rpcpassword = "123";
-const rpchost = "http://localhost:18443";
 
 const pjDirectory = "https://payjo.in";
 const ohttpRelays = [
@@ -83,7 +78,7 @@ class CheckInputsNotSeenCallback implements payjoin.IsOutputKnown {
 }
 
 export class Receiver {
-  wallet: Client;
+  wallet: Wallet;
   persister: InMemoryReceiverPersisterAsync;
   session:
     | payjoin.InitializedInterface
@@ -99,35 +94,9 @@ export class Receiver {
   interrupt: boolean;
 
   constructor() {
-    this.wallet = new Client({
-      host: rpchost,
-      username: rpcuser,
-      password: rpcpassword,
-      wallet: "receiver",
-    });
+    this.wallet = new Wallet("receiver");
     this.persister = new InMemoryReceiverPersisterAsync(1);
     this.interrupt = false;
-  }
-
-  async walletCommand(method: string, parameters: any[] = []) {
-    const result = await this.wallet.command([{ method, parameters }]);
-    return result[0];
-  }
-
-  async getbalance() {
-    const balance = await this.walletCommand("getbalance");
-    console.log("receiver balance", balance);
-    return balance;
-  }
-
-  async getnewaddress() {
-    const address = await this.walletCommand("getnewaddress");
-    console.log("receiver address", address);
-    return address;
-  }
-
-  testmempoolaccept(txHex: string) {
-    return this.walletCommand("testmempoolaccept", [txHex]);
   }
 
   getOhttpKeys() {
@@ -139,7 +108,7 @@ export class Receiver {
   }
 
   async initialize(amount?: bigint, expiration?: bigint) {
-    const address = await this.getnewaddress();
+    const address = await this.wallet.getnewaddress();
     const ohttpKeys = await this.getOhttpKeys();
     let session = new payjoin.ReceiverBuilder(
       address,

@@ -1,6 +1,7 @@
 import { payjoin } from "@xstoicunicornx/payjoin_test";
 import https from "node:https";
 import { HttpsProxyAgent } from "https-proxy-agent";
+import Client from "bitcoin-core";
 
 // node function for fetching ohttp keys
 export function fetchOhttpKeys(
@@ -70,4 +71,58 @@ export function postRequest(request: payjoin.Request) {
     headers: { "Content-Type": request.contentType },
     body: request.body,
   });
+}
+
+export class Wallet {
+  client: Client;
+
+  constructor(wallet: string) {
+    // nigiri defaults
+    const username = "admin1";
+    const password = "123";
+    const host = "http://localhost:18443";
+
+    this.client = new Client({
+      host,
+      username,
+      password,
+      wallet,
+    });
+  }
+
+  async command(method: string, parameters: any[] = []) {
+    const result = await this.client.command([{ method, parameters }]);
+    return result[0];
+  }
+
+  getbalance() {
+    return this.command("getbalance");
+  }
+
+  getnewaddress() {
+    return this.command("getnewaddress");
+  }
+
+  testmempoolaccept(txHex: string) {
+    return this.command("testmempoolaccept", [txHex]);
+  }
+
+  walletcreatefundedpsbt(address: string, amount: bigint) {
+    const amountBtc = Number(amount) / 100000000;
+    return this.command("walletcreatefundedpsbt", [
+      [], // inputs
+      [{ [address]: amountBtc }], // outputs
+      0, // locktime
+      { fee_rate: 1 }, // options
+    ]);
+  }
+
+  walletprocesspsbt(unsignedPsbt: string) {
+    return this.command("walletprocesspsbt", [
+      unsignedPsbt,
+      true,
+      "ALL",
+      false,
+    ]);
+  }
 }

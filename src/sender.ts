@@ -1,10 +1,5 @@
 import { payjoin } from "@xstoicunicornx/payjoin_test";
-import { postRequest } from "./utils";
-import Client from "bitcoin-core";
-
-const rpcuser = "admin1";
-const rpcpassword = "123";
-const rpchost = "http://localhost:18443";
+import { postRequest, Wallet } from "./utils";
 
 // const pjDirectory = "https://payjo.in";
 const ohttpRelays = [
@@ -38,51 +33,12 @@ class InMemorySenderPersisterAsync {
 }
 
 export class Sender {
-  wallet: Client;
+  wallet: Wallet;
   persister: any;
 
   constructor() {
-    this.wallet = new Client({
-      host: rpchost,
-      username: rpcuser,
-      password: rpcpassword,
-      wallet: "sender",
-    });
+    this.wallet = new Wallet("sender");
     this.persister = new InMemorySenderPersisterAsync(1);
-  }
-
-  async walletCommand(method: string, parameters: any[] = []) {
-    const result = await this.wallet.command([{ method, parameters }]);
-    return result[0];
-  }
-
-  async getbalance() {
-    const balance = await this.walletCommand("getbalance");
-    console.log("sender balance", balance);
-    return balance;
-  }
-
-  async walletcreatefundedpsbt(address: string, amount: bigint) {
-    const amountBtc = Number(amount) / 100000000;
-    const { psbt } = await this.walletCommand("walletcreatefundedpsbt", [
-      [], // inputs
-      [{ [address]: amountBtc }], // outputs
-      0, // locktime
-      { fee_rate: 1 }, // options
-    ]);
-    console.log("walletcreatefundedpsbt", psbt);
-    return psbt;
-  }
-
-  async walletprocesspsbt(unsignedPsbt: string) {
-    const { psbt } = await this.walletCommand("walletprocesspsbt", [
-      unsignedPsbt,
-      true,
-      "ALL",
-      false,
-    ]);
-    console.log("walletprocesspsbt", psbt);
-    return psbt;
   }
 
   async getNewPayjoinSender(uri: string) {
@@ -92,8 +48,11 @@ export class Sender {
       const address = pjUri.address();
       const amount = pjUri.amountSats();
       if (!amount) throw Error("receiver did not specify amount in URI");
-      const unsignedPsbt = await this.walletcreatefundedpsbt(address, amount);
-      const psbt = await this.walletprocesspsbt(unsignedPsbt);
+      const { psbt: unsignedPsbt } = await this.wallet.walletcreatefundedpsbt(
+        address,
+        amount,
+      );
+      const { psbt } = await this.wallet.walletprocesspsbt(unsignedPsbt);
       const payjoinSender = await new payjoin.SenderBuilder(psbt, pjUri)
         .buildRecommended(BigInt(1))
         .saveAsync(this.persister);
