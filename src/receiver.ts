@@ -64,6 +64,22 @@ class CheckInputsNotSeenCallback implements payjoin.IsOutputKnown {
   }
 }
 
+class ProcessPsbtCallback implements payjoin.ProcessPsbt {
+  constructor(psbt: string) {}
+
+  callback(psbt: string): string {
+    return psbt;
+  }
+}
+
+class TransactionExistsCallback implements payjoin.TransactionExists {
+  constructor() {}
+
+  callback(txid: string): ArrayBuffer | undefined {
+    return Buffer.from(txid, "hex").buffer;
+  }
+}
+
 interface Utxo {
   txid: string;
   vout: number;
@@ -113,6 +129,7 @@ export class Receiver {
     | payjoin.WantsInputsInterface
     | payjoin.WantsFeeRangeInterface
     | payjoin.ProvisionalProposalInterface
+    | payjoin.PayjoinProposalInterface
     | undefined;
   interrupt: boolean;
 
@@ -229,6 +246,23 @@ export class Receiver {
 
       const { psbt } = await this.wallet.walletprocesspsbt(unsignedPsbt);
       console.log("psbt", psbt);
+
+      this.session = await this.session
+        .finalizeProposal(new ProcessPsbtCallback(psbt))
+        .saveAsync(this.persister);
+
+      const random_index = Math.floor(Math.random() * ohttpRelays.length);
+      const { request, clientResponse } = this.session.createPostRequest(
+        ohttpRelays[random_index],
+      );
+      const response = await postRequest(request);
+      const stateTransition = await this.session
+        .processResponse(await response.arrayBuffer(), clientResponse)
+        .saveAsync(this.persister);
+
+      stateTransition
+        .monitor(new TransactionExistsCallback())
+        .saveAsync(this.persister);
     } catch (error) {
       console.error(error);
     }
