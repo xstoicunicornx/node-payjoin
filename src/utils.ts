@@ -103,17 +103,25 @@ export class Wallet {
     return this.command("getnewaddress");
   }
 
+  getaddressinfo(address: string) {
+    return this.command("getaddressinfo", [address]);
+  }
+
   testmempoolaccept(txHex: string) {
     return this.command("testmempoolaccept", [txHex]);
   }
 
-  walletcreatefundedpsbt(address: string, amount: bigint) {
+  walletcreatefundedpsbt(
+    address: string,
+    amount: bigint,
+    options: Record<string, any>,
+  ) {
     const amountBtc = Number(amount) / 100000000;
     return this.command("walletcreatefundedpsbt", [
       [], // inputs
       [{ [address]: amountBtc }], // outputs
       0, // locktime
-      { fee_rate: 1 }, // options
+      options,
     ]);
   }
 
@@ -128,5 +136,21 @@ export class Wallet {
 
   listunspent() {
     return this.command("listunspent");
+  }
+
+  finalizepsbt(psbt: string) {
+    return this.command("finalizepsbt", [psbt]);
+  }
+
+  analyzepsbt(psbt: string) {
+    return this.command("analyzepsbt", [psbt]);
+  }
+
+  sendrawtransaction(hex: string) {
+    return this.command("sendrawtransaction", [hex]);
+  }
+
+  decodepsbt(psbt: string) {
+    return this.command("decodepsbt", [psbt]);
   }
 }
