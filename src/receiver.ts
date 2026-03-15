@@ -1,12 +1,13 @@
 import { payjoin } from "@xstoicunicornx/payjoin_test";
 import { fetchOhttpKeys, postRequest, sleep, Wallet } from "./utils.ts";
+import { Psbt } from "bitcoinjs-lib";
 import { PlainOutPoint } from "@xstoicunicornx/payjoin_test/dist/generated/payjoin";
 
 const pjDirectory = "https://payjo.in";
 const ohttpRelays = [
   "https://pj.benalleng.com",
   "https://pj.bobspacebkk.com",
-  "https://ohttp.achow101.com",
+  // "https://ohttp.achow101.com",
 ];
 
 class InMemoryReceiverPersisterAsync {
@@ -21,17 +22,14 @@ class InMemoryReceiverPersisterAsync {
   }
 
   async save(event: any): Promise<void> {
-    console.log("save", event);
     this.events.push(event);
   }
 
   async load(): Promise<any[]> {
-    console.log("load", this.events);
     return this.events;
   }
 
   async close(): Promise<void> {
-    console.log("close");
     this.closed = true;
   }
 }
@@ -46,13 +44,17 @@ class MempoolAcceptanceCallback implements payjoin.CanBroadcast {
 }
 
 class IsScriptOwnedCallback implements payjoin.IsScriptOwned {
-  returnValue: boolean;
-  constructor(value: boolean) {
-    this.returnValue = value;
+  ownedScripts: string[];
+
+  constructor(ownedScripts: string[] = []) {
+    this.ownedScripts = ownedScripts;
   }
 
-  callback(_script: ArrayBuffer): boolean {
-    return this.returnValue;
+  callback(scriptBuf: ArrayBuffer): boolean {
+    const script = Buffer.from(scriptBuf).toString("hex");
+    const isOwned = this.ownedScripts.includes(script);
+    console.log("scriptHex", script, this.ownedScripts, isOwned);
+    return isOwned;
   }
 }
 
@@ -65,20 +67,24 @@ class CheckInputsNotSeenCallback implements payjoin.IsOutputKnown {
 }
 
 class ProcessPsbtCallback implements payjoin.ProcessPsbt {
-  constructor(psbt: string) {}
+  signedPsbt: string;
 
-  callback(psbt: string): string {
-    return psbt;
+  constructor(psbt: string) {
+    this.signedPsbt = psbt;
+  }
+
+  callback(_psbt: string): string {
+    return this.signedPsbt;
   }
 }
 
-class TransactionExistsCallback implements payjoin.TransactionExists {
-  constructor() {}
-
-  callback(txid: string): ArrayBuffer | undefined {
-    return Buffer.from(txid, "hex").buffer;
-  }
-}
+// class TransactionExistsCallback implements payjoin.TransactionExists {
+//   constructor() {}
+//
+//   callback(txid: string): ArrayBuffer | undefined {
+//     return Buffer.from(txid, "hex").buffer;
+//   }
+// }
 
 interface Utxo {
   txid: string;
@@ -132,11 +138,14 @@ export class Receiver {
     | payjoin.PayjoinProposalInterface
     | undefined;
   interrupt: boolean;
+  address: string | undefined;
+  originalPsbt: string;
 
   constructor() {
     this.wallet = new Wallet("receiver");
     this.persister = new InMemoryReceiverPersisterAsync(1);
     this.interrupt = false;
+    this.originalPsbt = "";
   }
 
   getOhttpKeys() {
@@ -150,6 +159,7 @@ export class Receiver {
   async initialize(amount?: bigint, expiration?: bigint) {
     const address = await this.wallet.getnewaddress();
     const ohttpKeys = await this.getOhttpKeys();
+    console.log("address", address, true);
     let session = new payjoin.ReceiverBuilder(
       address,
       pjDirectory,
@@ -158,6 +168,7 @@ export class Receiver {
     if (amount) session = session.withAmount(amount);
     if (expiration) session.withExpiration(expiration);
     this.session = await session.build().saveAsync(this.persister);
+    this.address = address;
   }
 
   getPjUri() {
@@ -168,9 +179,10 @@ export class Receiver {
 
   async poll() {
     if (!this.session) throw Error("receiver has not been initialized");
+    if (!this.address) throw Error("receiver address was not set properly");
     this.interrupt = false;
     while (!this.interrupt) {
-      console.log("polling...");
+      console.log("receiver polling...");
       if (this.session instanceof payjoin.Initialized) {
         console.log("session state initialized");
         const random_index = Math.floor(Math.random() * ohttpRelays.length);
@@ -192,7 +204,7 @@ export class Receiver {
       }
       await sleep(2);
     }
-    console.log("polling interrupted");
+    console.log("receiver polling interrupted");
   }
 
   stop() {
@@ -202,6 +214,7 @@ export class Receiver {
   // NOTE: nothing is actually being checked just walking through state transitions
   async checkOriginalPsbt() {
     try {
+      if (!this.address) throw Error("receiver address was not set properly");
       if (!(this.session instanceof payjoin.UncheckedOriginalPayload))
         throw Error("receiver is not in correct state to check original psbt");
 
@@ -210,7 +223,7 @@ export class Receiver {
         .checkBroadcastSuitability(undefined, canBroadcast)
         .saveAsync(this.persister);
 
-      const inputsOwned = new IsScriptOwnedCallback(false);
+      const inputsOwned = new IsScriptOwnedCallback();
       this.session = await this.session
         .checkInputsNotOwned(inputsOwned)
         .saveAsync(this.persister);
@@ -220,7 +233,8 @@ export class Receiver {
         .checkNoInputsSeenBefore(inputsSeen)
         .saveAsync(this.persister);
 
-      const outputsOwned = new IsScriptOwnedCallback(true);
+      const { scriptPubKey } = await this.wallet.getaddressinfo(this.address);
+      const outputsOwned = new IsScriptOwnedCallback([scriptPubKey]);
       this.session = await this.session
         .identifyReceiverOutputs(outputsOwned)
         .saveAsync(this.persister);
@@ -238,14 +252,24 @@ export class Receiver {
         .saveAsync(this.persister);
 
       this.session = await this.session
-        .applyFeeRange(BigInt(1), undefined)
+        .applyFeeRange(BigInt(0), BigInt(2))
         .saveAsync(this.persister);
 
       const unsignedPsbt = this.session.psbtToSign();
-      console.log("unsignedPsbt", unsignedPsbt);
 
-      const { psbt } = await this.wallet.walletprocesspsbt(unsignedPsbt);
-      console.log("psbt", psbt);
+      // manually removing sig so this can be used for signing
+      // this is supposed to be done by ProcessPsbtCallback
+      // but since there is no async support it is not possible
+      // to sign within ProcessPsbtCallback currently
+      const unsignedPsbtRecord = Psbt.fromBase64(unsignedPsbt);
+      const unsignedPsbtRecordData = unsignedPsbtRecord.data;
+      unsignedPsbtRecordData.inputs.forEach((input) => {
+        delete input.finalScriptWitness;
+      });
+
+      const { psbt } = await this.wallet.walletprocesspsbt(
+        new Psbt({}, unsignedPsbtRecordData).toBase64(),
+      );
 
       this.session = await this.session
         .finalizeProposal(new ProcessPsbtCallback(psbt))
@@ -260,9 +284,9 @@ export class Receiver {
         .processResponse(await response.arrayBuffer(), clientResponse)
         .saveAsync(this.persister);
 
-      stateTransition
-        .monitor(new TransactionExistsCallback())
-        .saveAsync(this.persister);
+      // stateTransition
+      //   .monitor(new TransactionExistsCallback())
+      //   .saveAsync(this.persister);
     } catch (error) {
       console.error(error);
     }
