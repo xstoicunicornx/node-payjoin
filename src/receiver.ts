@@ -2,6 +2,10 @@ import { payjoin } from "@xstoicunicornx/payjoin_test";
 import { fetchOhttpKeys, postRequest, sleep, Wallet } from "./utils.ts";
 import { Psbt } from "bitcoinjs-lib";
 import { PlainOutPoint } from "@xstoicunicornx/payjoin_test/dist/generated/payjoin";
+import {
+  SQLiteReceiverPersister,
+  receiverPersisterNextId,
+} from "./persister.ts";
 
 const pjDirectory = "https://payjo.in";
 const ohttpRelays = [
@@ -9,30 +13,6 @@ const ohttpRelays = [
   "https://pj.bobspacebkk.com",
   // "https://ohttp.achow101.com",
 ];
-
-class InMemoryReceiverPersisterAsync {
-  id: number;
-  events: any[];
-  closed: boolean;
-
-  constructor(id: number) {
-    this.id = id;
-    this.events = [];
-    this.closed = false;
-  }
-
-  async save(event: any): Promise<void> {
-    this.events.push(event);
-  }
-
-  async load(): Promise<any[]> {
-    return this.events;
-  }
-
-  async close(): Promise<void> {
-    this.closed = true;
-  }
-}
 
 // TODO: waiting for async support to actually implement these state trannsition callbacks
 class MempoolAcceptanceCallback implements payjoin.CanBroadcast {
@@ -123,7 +103,7 @@ async function createInputPairs(utxos: Utxo[]): Promise<payjoin.InputPair[]> {
 
 export class Receiver {
   wallet: Wallet;
-  persister: InMemoryReceiverPersisterAsync;
+  persister: SQLiteReceiverPersister;
   session:
     | payjoin.InitializedInterface
     | payjoin.UncheckedOriginalPayloadInterface
@@ -142,7 +122,7 @@ export class Receiver {
 
   constructor() {
     this.wallet = new Wallet("receiver");
-    this.persister = new InMemoryReceiverPersisterAsync(1);
+    this.persister = new SQLiteReceiverPersister(receiverPersisterNextId());
     this.interrupt = false;
     this.originalPsbt = "";
   }
@@ -166,7 +146,7 @@ export class Receiver {
     ) as payjoin.ReceiverBuilderInterface;
     if (amount) session = session.withAmount(amount);
     if (expiration) session.withExpiration(expiration);
-    this.session = await session.build().saveAsync(this.persister);
+    this.session = session.build().save(this.persister);
     this.address = address;
   }
 
@@ -189,9 +169,9 @@ export class Receiver {
           ohttpRelays[random_index],
         );
         const response = await postRequest(request);
-        const stateTransition = await this.session
+        const stateTransition = this.session
           .processResponse(await response.arrayBuffer(), clientResponse)
-          .saveAsync(this.persister);
+          .save(this.persister);
         if (
           stateTransition instanceof
           payjoin.InitializedTransitionOutcome.Progress
@@ -218,41 +198,39 @@ export class Receiver {
         throw Error("receiver is not in correct state to check original psbt");
 
       const canBroadcast = new MempoolAcceptanceCallback();
-      this.session = await this.session
+      this.session = this.session
         .checkBroadcastSuitability(undefined, canBroadcast)
-        .saveAsync(this.persister);
+        .save(this.persister);
 
       const inputsOwned = new IsScriptOwnedCallback();
-      this.session = await this.session
+      this.session = this.session
         .checkInputsNotOwned(inputsOwned)
-        .saveAsync(this.persister);
+        .save(this.persister);
 
       const inputsSeen = new CheckInputsNotSeenCallback();
-      this.session = await this.session
+      this.session = this.session
         .checkNoInputsSeenBefore(inputsSeen)
-        .saveAsync(this.persister);
+        .save(this.persister);
 
       const { scriptPubKey } = await this.wallet.getaddressinfo(this.address);
       const outputsOwned = new IsScriptOwnedCallback([scriptPubKey]);
-      this.session = await this.session
+      this.session = this.session
         .identifyReceiverOutputs(outputsOwned)
-        .saveAsync(this.persister);
+        .save(this.persister);
 
-      this.session = await this.session
-        .commitOutputs()
-        .saveAsync(this.persister);
+      this.session = this.session.commitOutputs().save(this.persister);
 
       const utxos: Utxo[] = await this.wallet.listunspent();
       const inputs = await createInputPairs(utxos);
       const chosenInput = this.session.tryPreservingPrivacy(inputs);
-      this.session = await this.session
+      this.session = this.session
         .contributeInputs([chosenInput])
         .commitInputs()
-        .saveAsync(this.persister);
+        .save(this.persister);
 
-      this.session = await this.session
+      this.session = this.session
         .applyFeeRange(BigInt(0), BigInt(2))
-        .saveAsync(this.persister);
+        .save(this.persister);
 
       const unsignedPsbt = this.session.psbtToSign();
 
@@ -270,22 +248,22 @@ export class Receiver {
         new Psbt({}, unsignedPsbtRecordData).toBase64(),
       );
 
-      this.session = await this.session
+      this.session = this.session
         .finalizeProposal(new ProcessPsbtCallback(psbt))
-        .saveAsync(this.persister);
+        .save(this.persister);
 
       const random_index = Math.floor(Math.random() * ohttpRelays.length);
       const { request, clientResponse } = this.session.createPostRequest(
         ohttpRelays[random_index],
       );
       const response = await postRequest(request);
-      const stateTransition = await this.session
+      const stateTransition = this.session
         .processResponse(await response.arrayBuffer(), clientResponse)
-        .saveAsync(this.persister);
+        .save(this.persister);
 
       // stateTransition
       //   .monitor(new TransactionExistsCallback())
-      //   .saveAsync(this.persister);
+      //   .save(this.persister);
     } catch (error) {
       console.error(error);
     }

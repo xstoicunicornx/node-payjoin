@@ -1,5 +1,6 @@
 import { payjoin } from "@xstoicunicornx/payjoin_test";
 import { postRequest, sleep, Wallet } from "./utils";
+import { SQLiteSenderPersister, senderPersisterNextId } from "./persister";
 
 // const pjDirectory = "https://payjo.in";
 const ohttpRelays = [
@@ -8,33 +9,9 @@ const ohttpRelays = [
   // "https://ohttp.achow101.com",
 ];
 
-class InMemorySenderPersisterAsync {
-  id: number;
-  events: any[];
-  closed: boolean;
-
-  constructor(id: number) {
-    this.id = id;
-    this.events = [];
-    this.closed = false;
-  }
-
-  async save(event: any): Promise<void> {
-    this.events.push(event);
-  }
-
-  async load(): Promise<any[]> {
-    return this.events;
-  }
-
-  async close(): Promise<void> {
-    this.closed = true;
-  }
-}
-
 export class Sender {
   wallet: Wallet;
-  persister: any;
+  persister: SQLiteSenderPersister;
   session:
     | payjoin.WithReplyKeyInterface
     | payjoin.PollingForProposalInterface
@@ -43,7 +20,7 @@ export class Sender {
 
   constructor() {
     this.wallet = new Wallet("sender");
-    this.persister = new InMemorySenderPersisterAsync(1);
+    this.persister = new SQLiteSenderPersister(senderPersisterNextId());
     this.interrupt = false;
   }
 
@@ -53,21 +30,18 @@ export class Sender {
       const address = pjUri.address();
       const amount = pjUri.amountSats();
       if (!amount) throw Error("receiver did not specify amount in URI");
-      const { psbt: unsignedPsbt, changepos: changePosition } =
-        await this.wallet.walletcreatefundedpsbt(address, amount, {
+      const { psbt: unsignedPsbt } = await this.wallet.walletcreatefundedpsbt(
+        address,
+        amount,
+        {
           fee_rate: 10, // options
-          // subtractFeeFromOutputs: [0],
-        });
-      const { psbt: testPsbt, changepos: testChangePosition } =
-        await this.wallet.walletcreatefundedpsbt(address, amount, {
-          fee_rate: 10, // options
-          subtractFeeFromOutputs: [0],
-        });
+        },
+      );
 
       const { psbt } = await this.wallet.walletprocesspsbt(unsignedPsbt);
-      this.session = await new payjoin.SenderBuilder(psbt, pjUri)
+      this.session = new payjoin.SenderBuilder(psbt, pjUri)
         .buildRecommended(BigInt(10))
-        .saveAsync(this.persister);
+        .save(this.persister);
     } catch (error) {
       console.error(error);
     }
@@ -84,9 +58,9 @@ export class Sender {
       // postPjRequest(request);
       const response = await postRequest(request);
 
-      this.session = await this.session
+      this.session = this.session
         .processResponse(await response.arrayBuffer(), ohttpCtx)
-        .saveAsync(this.persister);
+        .save(this.persister);
     } catch (error) {
       console.error(error);
     }
@@ -105,9 +79,9 @@ export class Sender {
           );
           const response = await postRequest(request);
           const responseBuffer = await response.arrayBuffer();
-          const stateTransition = await this.session
+          const stateTransition = this.session
             .processResponse(responseBuffer, ohttpCtx)
-            .saveAsync(this.persister);
+            .save(this.persister);
           console.log("sender processed response");
           if (
             stateTransition instanceof
