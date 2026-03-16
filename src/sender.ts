@@ -18,10 +18,23 @@ export class Sender {
     | undefined;
   interrupt: boolean;
 
-  constructor() {
+  constructor(persisterId?: number) {
     this.wallet = new Wallet("sender");
-    this.persister = new SQLiteSenderPersister(senderPersisterNextId());
+    this.persister = new SQLiteSenderPersister(
+      persisterId || senderPersisterNextId(),
+    );
     this.interrupt = false;
+    if (persisterId) {
+      const session = payjoin.replaySenderEventLog(this.persister);
+      if (session.state().inner.inner instanceof payjoin.PollingForProposal) {
+        this.session = session.state().inner
+          .inner as payjoin.PollingForProposalInterface;
+      } else {
+        throw Error(
+          `receiver session with persister id ${persisterId} is borked`,
+        );
+      }
+    }
   }
 
   async initialize(uri: string) {
@@ -42,6 +55,8 @@ export class Sender {
       this.session = new payjoin.SenderBuilder(psbt, pjUri)
         .buildRecommended(BigInt(10))
         .save(this.persister);
+      console.log("sender original psbt:");
+      console.log(psbt);
     } catch (error) {
       console.error(error);
     }
@@ -55,12 +70,12 @@ export class Sender {
       const { request, ohttpCtx } = this.session.createV2PostRequest(
         ohttpRelays[relayIndex],
       );
-      // postPjRequest(request);
       const response = await postRequest(request);
 
       this.session = this.session
         .processResponse(await response.arrayBuffer(), ohttpCtx)
         .save(this.persister);
+      console.log("sender successfully sent original psbt");
     } catch (error) {
       console.error(error);
     }
@@ -82,17 +97,14 @@ export class Sender {
           const stateTransition = this.session
             .processResponse(responseBuffer, ohttpCtx)
             .save(this.persister);
-          console.log("sender processed response");
           if (
             stateTransition instanceof
             payjoin.PollingForProposalTransitionOutcome.Progress
           ) {
-            // TODO: check proposal psbt
             const unsignedPsbt = stateTransition.inner.psbtBase64;
-            const { psbt, hex } =
-              await this.wallet.walletprocesspsbt(unsignedPsbt);
-            console.log("payjoin psbt", psbt);
-            console.log("payjoin hex", hex);
+            const { hex } = await this.wallet.walletprocesspsbt(unsignedPsbt);
+            const txid = await this.wallet.sendrawtransaction(hex);
+            console.log("sender broadcasted payjoin tx", txid);
             this.stop();
             return;
           }

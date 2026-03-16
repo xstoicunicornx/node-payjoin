@@ -1,10 +1,6 @@
 import { payjoin } from "@xstoicunicornx/payjoin_test";
 import { fetchOhttpKeys, postRequest, sleep, Wallet } from "./utils";
 import { Psbt, Transaction } from "bitcoinjs-lib";
-import {
-  PlainOutPoint,
-  replayReceiverEventLog,
-} from "@xstoicunicornx/payjoin_test/dist/generated/payjoin";
 import { SQLiteReceiverPersister, receiverPersisterNextId } from "./persister";
 
 const pjDirectory = "https://payjo.in";
@@ -40,7 +36,7 @@ class IsScriptOwnedCallback implements payjoin.IsScriptOwned {
 class CheckInputsNotSeenCallback implements payjoin.IsOutputKnown {
   constructor() {}
 
-  callback(_outpoint: PlainOutPoint): boolean {
+  callback(_outpoint: payjoin.PlainOutPoint): boolean {
     return false;
   }
 }
@@ -126,7 +122,7 @@ export class Receiver {
     );
     this.interrupt = false;
     if (persisterId) {
-      const session = replayReceiverEventLog(this.persister);
+      const session = payjoin.replayReceiverEventLog(this.persister);
       if (session.state().inner.inner instanceof payjoin.Initialized) {
         this.session = session.state().inner
           .inner as payjoin.InitializedInterface;
@@ -301,6 +297,8 @@ export class Receiver {
       this.session = this.session
         .finalizeProposal(new ProcessPsbtCallback(psbt))
         .save(this.persister);
+      console.log("receiver sent payjoin propopal");
+      console.log(psbt);
 
       const random_index = Math.floor(Math.random() * ohttpRelays.length);
       const { request, clientResponse } = this.session.createPostRequest(
