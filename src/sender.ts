@@ -31,17 +31,17 @@ export class Sender {
           .inner as payjoin.PollingForProposalInterface;
       } else {
         throw Error(
-          `receiver session with persister id ${persisterId} is borked`,
+          `sender session with persister id ${persisterId} is borked`,
         );
       }
     }
   }
 
-  async initialize(uri: string) {
+  async initialize(uri: string, amountArg: string) {
     try {
       const pjUri = payjoin.Uri.parse(uri).checkPjSupported();
       const address = pjUri.address();
-      const amount = pjUri.amountSats();
+      const amount = pjUri.amountSats() || BigInt(amountArg);
       if (!amount) throw Error("receiver did not specify amount in URI");
       const { psbt: unsignedPsbt } = await this.wallet.walletcreatefundedpsbt(
         address,

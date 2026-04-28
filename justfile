@@ -21,5 +21,5 @@ command *ARGS:
 receive ARG:
   node dist/index.js "receive" {{ ARG }}
 
-send ARG:
-  node dist/index.js "send" "{{ ARG }}"
+send ARG1 ARG2="0":
+  node dist/index.js "send" "{{ ARG1 }}" "{{ARG2}}"

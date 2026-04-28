@@ -3,7 +3,7 @@ import { Receiver } from "./receiver";
 import { Sender } from "./sender";
 import {
   loadOpenReceiverPersisterIds,
-  SQLiteSenderPersister,
+  loadOpenSenderPersisterIds,
 } from "./persister";
 
 async function receive(arg1: string) {
@@ -22,9 +22,10 @@ async function receive(arg1: string) {
   console.log(receiver.getPjUri().asString());
 }
 
-async function send(arg1: string) {
+async function send(arg1: string, arg2?: string) {
   if (arg1 === "resume") {
-    const ids = loadOpenReceiverPersisterIds();
+    const ids = loadOpenSenderPersisterIds();
+    console.log("send resume ids: ", ids);
     for (let id of ids) {
       const sender = new Sender(id);
       sender.poll();
@@ -32,13 +33,13 @@ async function send(arg1: string) {
     return;
   }
   const sender = new Sender();
-  await sender.initialize(arg1);
+  await sender.initialize(arg1, arg2 ? arg2 : "");
   await sender.postOriginalPsbt();
 }
 
 async function main() {
   await uniffiInitAsync();
-  const [command, arg1] = process.argv.slice(2);
+  const [command, arg1, arg2] = process.argv.slice(2);
 
   if (!command) throw Error("no command given");
   if (!arg1) throw Error("no arguments provided");
@@ -48,7 +49,7 @@ async function main() {
       break;
     }
     case "send": {
-      await send(arg1);
+      await send(arg1, arg2);
       break;
     }
     default: {
