@@ -12,14 +12,14 @@ init:
   just build
 
 command *ARGS:
-  node dist/index.js {{ ARGS }}
+  npx tsx src/index.ts {{ ARGS }}
 
 
 
 ### app commands
 
 receive ARG:
-  node dist/index.js "receive" {{ ARG }}
+  npx tsx src/index.ts "receive" {{ ARG }}
 
 send ARG1 ARG2="0":
-  node dist/index.js "send" "{{ ARG1 }}" "{{ARG2}}"
+  npx tsx src/index.ts "send" "{{ ARG1 }}" "{{ARG2}}"

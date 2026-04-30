@@ -1,4 +1,4 @@
-import { payjoin, uniffiInitAsync } from "@xstoicunicornx/payjoin_test";
+import { uniffiInitAsync } from "@xstoicunicornx/payjoin";
 import { Receiver } from "./receiver";
 import { Sender } from "./sender";
 import {

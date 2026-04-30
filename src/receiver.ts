@@ -1,4 +1,4 @@
-import { payjoin } from "@xstoicunicornx/payjoin_test";
+import { payjoin } from "@xstoicunicornx/payjoin";
 import { fetchOhttpKeys, postRequest, sleep, Wallet } from "./utils";
 import { Psbt, Transaction } from "bitcoinjs-lib";
 import { SQLiteReceiverPersister, receiverPersisterNextId } from "./persister";

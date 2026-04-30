@@ -1,7 +1,7 @@
 {
   "name": "payjoin",
   "version": "1.0.0",
-  "main": "index.ts",
+  "main": "src/index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npx tsc"
@@ -14,12 +14,12 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "25.3.1",
     "prettier": "3.6.2",
-    "tsx": "4.21.0",
-    "typescript": "5.9.3",
-    "uniffi-bindgen-react-native": "github:spacebear21/uniffi-bindgen-react-native#update-uniffi-0.30-wasm"
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3",
+    "uniffi-bindgen-react-native": "^0.30.0-1"
   },
   "dependencies": {
-    "@xstoicunicornx/payjoin_test": "0.1.5",
+    "@xstoicunicornx/payjoin": "^0.0.3",
     "better-sqlite3": "^12.8.0",
     "bitcoin-core": "5.0.0",
     "bitcoinjs-lib": "^7.0.1",
