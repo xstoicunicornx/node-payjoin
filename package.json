@@ -15,11 +15,10 @@
     "@types/node": "25.3.1",
     "prettier": "3.6.2",
     "tsx": "^4.21.0",
-    "typescript": "^6.0.3",
-    "uniffi-bindgen-react-native": "^0.30.0-1"
+    "typescript": "^6.0.3"
   },
   "dependencies": {
-    "@xstoicunicornx/payjoin": "^0.0.3",
+    "@xstoicunicornx/payjoin": "^0.0.5",
     "better-sqlite3": "^12.8.0",
     "bitcoin-core": "5.0.0",
     "bitcoinjs-lib": "^7.0.1",
