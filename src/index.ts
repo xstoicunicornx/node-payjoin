@@ -1,10 +1,10 @@
 import { uniffiInitAsync } from "@xstoicunicornx/payjoin";
-import { Receiver } from "./receiver";
-import { Sender } from "./sender";
+import { Receiver } from "./receiver.js";
+import { Sender } from "./sender.js";
 import {
   loadOpenReceiverPersisterIds,
   loadOpenSenderPersisterIds,
-} from "./persister";
+} from "./persister.js";
 
 async function receive(arg1: string) {
   if (arg1 === "resume") {

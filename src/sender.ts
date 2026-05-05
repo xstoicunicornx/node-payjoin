@@ -1,6 +1,6 @@
 import { payjoin } from "@xstoicunicornx/payjoin";
-import { postRequest, sleep, Wallet } from "./utils";
-import { SQLiteSenderPersister, senderPersisterNextId } from "./persister";
+import { postRequest, sleep, Wallet } from "./utils.js";
+import { SQLiteSenderPersister, senderPersisterNextId } from "./persister.js";
 
 // const pjDirectory = "https://payjo.in";
 const ohttpRelays = [
