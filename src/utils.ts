@@ -1,4 +1,4 @@
-import { payjoin } from "@xstoicunicornx/payjoin";
+import { payjoin } from "payjoin";
 import https from "node:https";
 import { HttpsProxyAgent } from "https-proxy-agent";
 import Client from "bitcoin-core";

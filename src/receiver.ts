@@ -1,7 +1,10 @@
-import { payjoin } from "@xstoicunicornx/payjoin";
+import { payjoin } from "payjoin";
 import { fetchOhttpKeys, postRequest, sleep, Wallet } from "./utils.js";
 import { Psbt, Transaction } from "bitcoinjs-lib";
-import { SQLiteReceiverPersister, receiverPersisterNextId } from "./persister.js";
+import {
+  SQLiteReceiverPersister,
+  receiverPersisterNextId,
+} from "./persister.js";
 
 const pjDirectory = "https://payjo.in";
 const ohttpRelays = [

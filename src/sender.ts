@@ -1,4 +1,4 @@
-import { payjoin } from "@xstoicunicornx/payjoin";
+import { payjoin } from "payjoin";
 import { postRequest, sleep, Wallet } from "./utils.js";
 import { SQLiteSenderPersister, senderPersisterNextId } from "./persister.js";
 

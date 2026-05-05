@@ -9,17 +9,18 @@ clean:
 
 init:
   just clean
+  npm install
   just build
 
 command *ARGS:
-  npx tsx src/index.ts {{ ARGS }}
+  node dist/index.js {{ ARGS }}
 
 
 
 ### app commands
 
 receive ARG:
-  npx tsx src/index.ts "receive" {{ ARG }}
+  node dist/index.js "receive" {{ ARG }}
 
 send ARG1 ARG2="0":
-  npx tsx src/index.ts "send" "{{ ARG1 }}" "{{ARG2}}"
+  node dist/index.js "send" "{{ ARG1 }}" "{{ARG2}}"
