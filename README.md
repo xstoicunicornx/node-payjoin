@@ -13,7 +13,7 @@ transactions via `bitcoind`. By default it supports Payjoin v2, which is
 backwards compatible with v1. Enable the `v1` feature to disable Payjoin v2 to
 send and receive using only v1.
 
-##### Do not use this with real funds
+##### DO NOT USE WITH REAL FUNDS
 
 This code does only minimal validation, and the test coverage is thin. Use it on regtest only.
 
@@ -46,7 +46,7 @@ EOF
 bitcoind -regtest -datadir="$PWD/.bitcoin-regtest" -daemon
 ```
 
-Set a shell helper for the rest of the commands:
+Set a shell helper for the rest of the commands (must be run in bash):
 
 ```sh
 BITCOIN_CLI="bitcoin-cli -regtest -datadir=$PWD/.bitcoin-regtest"
