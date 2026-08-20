@@ -13,37 +13,62 @@ transactions via `bitcoind`. By default it supports Payjoin v2, which is
 backwards compatible with v1. Enable the `v1` feature to disable Payjoin v2 to
 send and receive using only v1.
 
-##### DO NOT USE THIS FOR REAL FUNDS
+##### Do not use this with real funds
 
-There is only very minimal validation done in this implementation (as many of the state transitions do not support async as of right now) and very little testing.
+This code does only minimal validation, and the test coverage is thin. Use it on regtest only.
 
 ## Demo
 
-Here's a minimal payjoin example using this package connected to `bitcoind` on [regtest](https://developer.bitcoin.org/examples/testing.html#regtest-mode). This example uses [`nigiri`](https://github.com/vulpemventures/nigiri) to setup a regtest environment.
+Here's a minimal payjoin example using this package connected to `bitcoind` on [regtest](https://developer.bitcoin.org/examples/testing.html#regtest-mode). This example uses `bitcoin-cli` to setup a regtest environment.
 
 Payjoin `v2` allows for transactions to be completed asynchronously. Thus the sender and receiver do not need to be online at the same time to payjoin. Learn more about how `v2` works [here](https://payjoin.org/docs/how-it-works/payjoin-v2-bip-77).
 
-To get started, install `nigiri` and [`docker`](https://www.docker.com/get-started). Payjoin requires the sender and receiver each to have spendable [UTXOs](https://www.unchained.com/blog/what-is-a-utxo-bitcoin), so we'll create two wallets and fund each.
+To get started, install Bitcoin Core. Payjoin requires the sender and receiver each to have spendable [UTXOs](https://www.unchained.com/blog/what-is-a-utxo-bitcoin), so we'll create two wallets and fund each.
 
-### Install nigiri
+### Start a regtest node
+
+This example keeps the chain data inside the repo so it is easy to delete later.
 
 ```sh
-# Download nigiri and check that installation has succeeded.
-curl https://getnigiri.vulpem.com | bash
-nigiri --version
-nigiri start
+mkdir -p .bitcoin-regtest
 
-# Create two regtest wallets.
-nigiri rpc createwallet sender
-nigiri rpc createwallet receiver
+cat > .bitcoin-regtest/bitcoin.conf <<'EOF'
+regtest=1
+server=1
+fallbackfee=0.00001000
+rpcuser=admin1
+rpcpassword=123
+
+[regtest]
+rpcport=18443
+EOF
+
+bitcoind -regtest -datadir="$PWD/.bitcoin-regtest" -daemon
+```
+
+Set a shell helper for the rest of the commands:
+
+```sh
+BITCOIN_CLI="bitcoin-cli -regtest -datadir=$PWD/.bitcoin-regtest"
+
+$BITCOIN_CLI getblockchaininfo
+```
+
+The RPC user and password above match the demo defaults in `src/utils.ts`. If you change them, update the wallet client settings there too.
+
+### Create and fund wallets
+
+```sh
+$BITCOIN_CLI createwallet sender
+$BITCOIN_CLI createwallet receiver
 
 # We need 101 blocks for the UTXOs to be spendable due to the coinbase maturity requirement.
-nigiri rpc generatetoaddress 101 $(nigiri rpc -rpcwallet=sender getnewaddress)
-nigiri rpc generatetoaddress 101 $(nigiri rpc -rpcwallet=receiver getnewaddress)
+$BITCOIN_CLI -rpcwallet=sender generatetoaddress 101 "$($BITCOIN_CLI -rpcwallet=sender getnewaddress)"
+$BITCOIN_CLI -rpcwallet=receiver generatetoaddress 101 "$($BITCOIN_CLI -rpcwallet=receiver getnewaddress)"
 
 # Check the balances before doing a Payjoin transaction.
-nigiri rpc -rpcwallet=sender getbalance
-nigiri rpc -rpcwallet=receiver getbalance
+$BITCOIN_CLI -rpcwallet=sender getbalance
+$BITCOIN_CLI -rpcwallet=receiver getbalance
 ```
 
 Great! Our wallets are setup.
