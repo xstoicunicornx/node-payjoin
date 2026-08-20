@@ -91,8 +91,21 @@ export class Wallet {
   }
 
   private async command(method: string, parameters: any[] = []) {
-    const result = await this.client.command([{ method, parameters }]);
-    return result[0];
+    try {
+      const result = await this.client.command([{ method, parameters }]);
+      return result[0];
+    } catch (err: any) {
+      console.error("Bitcoin RPC error", {
+        method,
+        host: this.client.host,
+        wallet: this.client.wallet,
+        code: err?.code,
+        address: err?.address,
+        port: err?.port,
+        message: err?.message,
+      });
+      throw err;
+    }
   }
 
   getbalance() {
