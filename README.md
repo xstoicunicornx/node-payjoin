@@ -27,9 +27,9 @@ To get started, install Bitcoin Core. Payjoin requires the sender and receiver e
 
 ### Start a regtest node
 
-This example keeps the chain data inside the repo so it is easy to delete later.
-
 > Shortcut: `./scripts/start-regtest.sh` runs every step below and waits until the node is ready.
+
+This example keeps the chain data inside the repo so it is easy to delete later.
 
 ```sh
 mkdir -p .bitcoin-regtest
@@ -48,6 +48,12 @@ EOF
 bitcoind -regtest -datadir="$PWD/.bitcoin-regtest" -daemon
 ```
 
+The RPC user and password above match the demo defaults in `src/utils.ts`. If you change them, update the wallet client settings there too.
+
+### Create and fund wallets
+
+> Shortcut: `./scripts/fund-regtest.sh` creates and funds both wallets, and is safe to re-run to top up balances.
+
 Set a shell helper for the rest of the commands (must be run in bash):
 
 ```sh
@@ -56,11 +62,7 @@ BITCOIN_CLI="bitcoin-cli -regtest -datadir=$PWD/.bitcoin-regtest"
 $BITCOIN_CLI getblockchaininfo
 ```
 
-The RPC user and password above match the demo defaults in `src/utils.ts`. If you change them, update the wallet client settings there too.
-
-### Create and fund wallets
-
-> Shortcut: `./scripts/fund-regtest.sh` creates and funds both wallets, and is safe to re-run to top up balances.
+Fund the wallets. The wallets must be named `sender` and `receiver`, since that's what the app's RPC calls target:
 
 ```sh
 $BITCOIN_CLI createwallet sender
@@ -144,9 +146,9 @@ Congratulations! You've completed a version 2 payjoin, which can be used for che
 
 ### Stop the regtest node
 
-When you're done, stop the node:
-
 > Shortcut: `./scripts/stop-regtest.sh` stops the node and waits for it to shut down.
+
+When you're done, stop the node:
 
 ```sh
 $BITCOIN_CLI stop
